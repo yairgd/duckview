@@ -1,0 +1,34 @@
+# go-task runner: https://taskfile.dev
+version: '3'
+
+tasks:
+  default:
+    desc: Build duckview into bin/
+    cmds:
+      - task: build
+
+  build:
+    desc: Build all packages and the binary (cgo, DuckDB compiled in)
+    cmds:
+      - go build ./...
+      - mkdir -p bin
+      - go build -o bin/duckview ./cmd/duckview
+
+  run:
+    desc: "Run on a database: task run -- file.duckdb"
+    deps: [build]
+    cmds:
+      - bin/duckview {{.CLI_ARGS}}
+
+  test:
+    desc: Go tests
+    cmds:
+      - go test ./...
+
+  check:
+    desc: build + vet + test + gofmt
+    cmds:
+      - task: build
+      - go vet ./...
+      - task: test
+      - test -z "$(gofmt -l cmd internal)"
