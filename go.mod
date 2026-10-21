@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/gdamore/tcell/v2 v2.13.8
 	github.com/marcboeker/go-duckdb v1.8.5
-	github.com/yairgd/termforge v0.8.0
+	github.com/yairgd/termforge v0.9.0
 )
 
 require (
@@ -41,4 +41,4 @@ require (
 )
 
 // Local termforge checkout (HistogramWidget is not released yet). Remove once tagged.
-replace github.com/yairgd/termforge => ../termforge
+//replace github.com/yairgd/termforge => ../termforge
