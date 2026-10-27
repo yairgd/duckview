@@ -24,7 +24,8 @@ type dataPane struct {
 	off   int
 	err   string
 
-	onEnter func(row int) // Enter on a row (catalog: open it)
+	onEnter  func(row int) // Enter on a row (catalog: open it)
+	onSelect func(row int) // selection moved by a key (catalog: open it)
 }
 
 func (a *App) newDataPane(src db.Source) *dataPane {
@@ -140,6 +141,15 @@ func (p *dataPane) goTo(off, sel int) {
 }
 
 func (p *dataPane) HandleFocusKey(ev *tcell.EventKey) bool {
+	before := p.SelectedRow()
+	handled := p.handleKey(ev)
+	if after := p.SelectedRow(); p.onSelect != nil && after != before && ev.Key() != tcell.KeyEnter {
+		p.onSelect(after)
+	}
+	return handled
+}
+
+func (p *dataPane) handleKey(ev *tcell.EventKey) bool {
 	sel, n := p.SelectedRow(), p.Table().NumRows()
 	r := ev.Rune()
 	isRune := ev.Key() == tcell.KeyRune

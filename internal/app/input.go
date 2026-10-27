@@ -111,7 +111,11 @@ func (a *App) HandleMouse(ev *tcell.EventMouse) {
 	if primary || wheel || btn&tcell.ButtonMiddle != 0 {
 		a.Layout().FocusAt(x, y)
 	}
+	before := a.cat.SelectedRow()
 	a.tab.HandleEvent(ev)
+	if wheel && a.focusedWidget() == termforge.Widget(a.cat) && a.cat.SelectedRow() != before {
+		a.cat.onSelect(a.cat.SelectedRow())
+	}
 	// A click on a catalog row is Enter on it (press edge only, not drag/repeat).
 	if primary && !a.pressed {
 		if _, onRow := a.cat.HitDataRow(x, y); onRow && a.focusedWidget() == termforge.Widget(a.cat) {

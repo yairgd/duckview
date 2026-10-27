@@ -13,6 +13,7 @@ tasks:
       - go build ./...
       - mkdir -p bin
       - go build -o bin/duckview ./cmd/duckview
+      - cp bin/duckview ~/go/bin
 
   run:
     desc: "Run on a database: task run -- file.duckdb"

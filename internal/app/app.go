@@ -58,6 +58,7 @@ func (a *App) init() error {
 	cat.onEnter = func(row int) {
 		a.openTable(cat.Table().CellText(row, 0), cat.Table().CellText(row, 1))
 	}
+	cat.onSelect = cat.onEnter
 	for i := 0; i < cat.Table().NumRows(); i++ {
 		a.tables = append(a.tables, cat.Table().CellText(i, 0)+"."+cat.Table().CellText(i, 1))
 	}
