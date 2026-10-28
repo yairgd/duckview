@@ -20,9 +20,9 @@ func (a *App) initCommands() {
 		).
 		LeafRestComplete("open", a.cmdOpen, a.completeTables).
 		LeafRestComplete("sort", a.cmdSort, a.completeColumns).
-		LeafRestComplete("filter", a.cmdFilter, a.completeColumns).
+		LeafRestComplete("filter", a.cmdFilter, a.completeFilter).
 		LeafRestComplete("hist", a.cmdHist, a.completeColumns).
-		LeafRestComplete("plot", a.cmdPlot, a.completeColumns).
+		LeafRestComplete("plot", a.cmdPlot, a.completePlot).
 		LeafRest("sql", a.cmdSQL).
 		LeafRest("export", a.cmdExport).
 		Leaf("schema", a.cmdSchema).
@@ -77,6 +77,55 @@ func (a *App) completeColumns(prefix string, _ bool) []string {
 		return filterPrefix(p.cols, prefix)
 	}
 	return nil
+}
+
+// completeFilter completes the column name being typed anywhere in a filter
+// expression (":filter pe < 10 and sec<Tab>").
+func (a *App) completeFilter(prefix string, _ bool) []string {
+	p := a.dataPane()
+	if p == nil {
+		return nil
+	}
+	return completeLastWord(p.cols, prefix, false, 0)
+}
+
+// completePlot completes both fields of ":plot <y> [<x>]".
+func (a *App) completePlot(prefix string, _ bool) []string {
+	p := a.dataPane()
+	if p == nil {
+		return nil
+	}
+	return completeLastWord(p.cols, prefix, true, 2)
+}
+
+// completeLastWord completes the identifier at the end of prefix against cols.
+// The command line replaces only the text after the last space with the chosen
+// candidate, so each candidate is that chunk's own leading punctuation (for
+// example "(") plus the column. emptyOK lists every column when the word is empty
+// after a space; maxWords > 0 stops completing after that many words. Nothing is
+// offered inside a quoted string or for numbers.
+func completeLastWord(cols []string, prefix string, emptyOK bool, maxWords int) []string {
+	if strings.Count(prefix, "'")%2 == 1 || strings.Count(prefix, `"`)%2 == 1 {
+		return nil
+	}
+	isDelim := func(r rune) bool { return strings.ContainsRune(" \t()=<>!,+-*/%|&", r) }
+	chunk := prefix[strings.LastIndex(prefix, " ")+1:]
+	cut := strings.LastIndexFunc(chunk, isDelim) + 1
+	head, word := chunk[:cut], chunk[cut:]
+	if maxWords > 0 && len(strings.Fields(prefix[:len(prefix)-len(chunk)])) >= maxWords {
+		return nil
+	}
+	if word == "" && prefix != "" && !(emptyOK && chunk == "") {
+		return nil
+	}
+	if word != "" && word[0] >= '0' && word[0] <= '9' {
+		return nil
+	}
+	var out []string
+	for _, c := range filterPrefix(cols, word) {
+		out = append(out, head+c)
+	}
+	return out
 }
 
 func filterPrefix(names []string, prefix string) []string {
@@ -223,6 +272,11 @@ func (a *App) cmdHelp(...any) {
 		{":sql <select ...>", "show a query result in the left pane"},
 		{":sort <expr> [desc]", "ORDER BY, pushed to SQL; no argument clears"},
 		{":filter <expr>", "WHERE, pushed to SQL; no argument clears"},
+		{"  :filter pe < 10 and sector = 'Technology'", ""},
+		{"  :filter ticker in ('AAPL','MSFT')", ""},
+		{"  :filter name ilike '%bank%'", ""},
+		{"  :filter date >= '2024-01-01'", ""},
+		{"  :filter marketcap is not null", ""},
 		{":schema", "column types, nulls, distinct, min/max in a new pane"},
 		{":hist <expr> [bins]", "histogram of a numeric expression"},
 		{":plot <y> [<x>]", "line graph; x defaults to the first date column"},
