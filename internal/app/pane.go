@@ -140,6 +140,32 @@ func (p *dataPane) goTo(off, sel int) {
 	p.EnsureRowVisible()
 }
 
+// edge handles a move of step rows in dir (+1/-1) that would leave the loaded
+// window: it loads the neighbouring window, or clamps at the first/last row
+// (the table widget would wrap around). It reports whether it handled the move.
+func (p *dataPane) edge(dir, step int) bool {
+	sel, n := p.SelectedRow(), p.Table().NumRows()
+	switch {
+	case dir > 0 && sel+step >= n:
+		if p.off+pageSize < int(p.total) {
+			p.goTo(p.off+pageSize, 0)
+		} else {
+			p.SetSelectedRow(n - 1)
+			p.EnsureRowVisible()
+		}
+	case dir < 0 && sel-step < 0:
+		if p.off > 0 {
+			p.goTo(p.off-pageSize, -1)
+		} else {
+			p.SetSelectedRow(0)
+			p.EnsureRowVisible()
+		}
+	default:
+		return false
+	}
+	return true
+}
+
 func (p *dataPane) HandleFocusKey(ev *tcell.EventKey) bool {
 	before := p.SelectedRow()
 	handled := p.handleKey(ev)
@@ -153,13 +179,13 @@ func (p *dataPane) handleKey(ev *tcell.EventKey) bool {
 	sel, n := p.SelectedRow(), p.Table().NumRows()
 	r := ev.Rune()
 	isRune := ev.Key() == tcell.KeyRune
-	down := ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyPgDn || ev.Key() == tcell.KeyCtrlF || (isRune && r == 'j')
-	up := ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyCtrlB || (isRune && r == 'k')
+	pgDn := ev.Key() == tcell.KeyPgDn || ev.Key() == tcell.KeyCtrlF
+	pgUp := ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyCtrlB
+	down := ev.Key() == tcell.KeyDown || (isRune && r == 'j')
+	up := ev.Key() == tcell.KeyUp || (isRune && r == 'k')
 	switch {
-	case down && sel == n-1:
-		p.goTo(p.off+pageSize, 0)
-	case up && sel == 0:
-		p.goTo(p.off-pageSize, -1)
+	case (down && p.edge(1, 1)) || (pgDn && p.edge(1, p.PageRows())):
+	case (up && p.edge(-1, 1)) || (pgUp && p.edge(-1, p.PageRows())):
 	case ev.Key() == tcell.KeyHome || (isRune && r == 'g'):
 		p.goTo(0, 0)
 	case ev.Key() == tcell.KeyEnd || (isRune && r == 'G'):

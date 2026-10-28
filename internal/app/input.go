@@ -30,6 +30,7 @@ func (a *App) enterCommandMode() {
 }
 
 func (a *App) leaveCommandMode() {
+	a.clearCompletion()
 	a.cmdWidget.Deativate()
 	a.SetMode(platform.ModeNormal)
 	a.RequestFrame()
@@ -46,6 +47,18 @@ func (a *App) handleNormalKey(ev *tcell.EventKey) bool {
 }
 
 func (a *App) handleCommandKey(ev *tcell.EventKey) bool {
+	if ev.Key() == tcell.KeyTAB && a.cmdWidget.Kind() == termforge.CmdKindCommand {
+		if a.completeTab() {
+			a.RequestFrame()
+			return true
+		}
+		a.cmdWidget.HandleEvent(ev)
+		a.afterTab()
+		a.RequestFrame()
+		return true
+	} else {
+		a.clearCompletion()
+	}
 	a.cmdWidget.HandleEvent(ev)
 	if ev.Key() == tcell.KeyEnter {
 		a.cmdWidget.Deativate()
@@ -112,6 +125,16 @@ func (a *App) HandleMouse(ev *tcell.EventMouse) {
 		a.Layout().FocusAt(x, y)
 	}
 	before := a.cat.SelectedRow()
+	if p, ok := a.focusedWidget().(*dataPane); ok && wheel {
+		dir := 1
+		if btn&tcell.WheelUp != 0 {
+			dir = -1
+		}
+		if p.edge(dir, 1) {
+			a.RequestFrame()
+			return
+		}
+	}
 	a.tab.HandleEvent(ev)
 	if wheel && a.focusedWidget() == termforge.Widget(a.cat) && a.cat.SelectedRow() != before {
 		a.cat.onSelect(a.cat.SelectedRow())
