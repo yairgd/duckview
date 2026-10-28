@@ -23,6 +23,11 @@ type App struct {
 	cat     *dataPane // catalog, kept across openSource so its selection survives
 	pressed bool      // primary button was down on the previous mouse event
 	tables  []string  // "schema.name" for ':open' completion
+
+	popup    *termforge.CompletionBarWidget // candidates, one row above the command line, while Tab-completing
+	compList []string                       // candidates of the Tab cycle in progress
+	compIdx  int                            // candidate currently applied (-1: only the common prefix)
+	compText string                         // cmdline text right after our last completion
 }
 
 func New(d *db.DB) (*App, error) {
@@ -36,6 +41,7 @@ func New(d *db.DB) (*App, error) {
 }
 
 func (a *App) Close() {
+	a.saveHistory()
 	if a.App != nil {
 		a.App.Close()
 	}
@@ -48,6 +54,7 @@ func (a *App) init() error {
 	a.cmdWidget.SetPostInterrupt(a.PostInterrupt)
 	a.cmdWidget.SetClipboard(a.ClipboardIO())
 	a.SetCmdline(a.cmdWidget)
+	a.loadHistory()
 
 	base, err := a.db.Catalog()
 	if err != nil {
@@ -67,6 +74,7 @@ func (a *App) init() error {
 	empty.PaneName = "data: pick a table in the catalog (Enter)"
 	a.tab = termforge.NewTabWidget("duckview", a.newTree(empty))
 	a.AddWidget(a.tab)
+	a.initCompletionPopup() // after the workspace, so the wildmenu row paints over it
 
 	if a.ctx.Bus != nil {
 		platform.Subscribe(a.ctx.Bus, func(msg termforge.SubmitMsg) {
